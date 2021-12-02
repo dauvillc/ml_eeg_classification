@@ -43,9 +43,10 @@ if __name__ == "__main__":
             ###########################################################
             # APPLY HERE ALL NON-GLOBAL PREPROCESSING
             # (ex: bandpass filtering)
-
             # Picks only the right channels for the analysis
             select_channels(raw)
+            # Frequency filtering
+            raw.filter(1, 120)
             ###########################################################
             raws_objects.append(raw)
     # Events

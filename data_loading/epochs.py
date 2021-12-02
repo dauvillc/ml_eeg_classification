@@ -3,6 +3,7 @@ Defines functions to handle epochs. This includes splitting the signals
 based on events, and merging epochs together.
 """
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def split_to_epochs(raw, events):
@@ -61,3 +62,15 @@ def assemble_epochs(epochs_list):
     min_length = min((min((ep.shape[1] for ep in epochs)) for epochs in epochs_list))
     epochs_list = [epochs[:, :, :min_length] for epochs in epochs_list]
     return np.concatenate(epochs_list, axis=0)
+
+
+def plot_epochs(epochs):
+    """
+    Plots and displays information about the epochs, to help
+    spot bad data.
+    :param epochs: ndarray of shape (N_epochs, N_channels, N_timesteps)
+    """
+    fig, ax = plt.subplots(figsize=(12, 10), nrows=1, ncols=1)
+    ax.bar(np.arange(epochs.shape[0]), [ep.std() for ep in epochs])
+    ax.set_xticks(np.arange(epochs.shape[0]))
+    fig.show()
