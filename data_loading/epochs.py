@@ -44,3 +44,20 @@ def split_to_epochs(raw, events):
     epochs_true_labels = (label_events == 12).astype(int)
 
     return epochs, epochs_true_labels
+
+
+def assemble_epochs(epochs_list):
+    """
+    Assembles multiple epochs arrays into a single array.
+    :param epochs_list: list of arrays. Each array has shape
+        (N_epochs, N_channels, N_timesteps).
+    :return: E, L where:
+    - E is an array of shape (N_epochs_total, N_channels, N_timesteps).
+    """
+    # We can't simply concatenate all epochs arrays as they might not have
+    # exactly the same amount of timesteps (different 3rd dimension).
+    # What we can do is compute the minimum length accross ALL epochs
+    # and cut all arrays" 3rd dim to that length
+    min_length = min((min((ep.shape[1] for ep in epochs)) for epochs in epochs_list))
+    epochs_list = [epochs[:, :, :min_length] for epochs in epochs_list]
+    return np.concatenate(epochs_list, axis=0)
