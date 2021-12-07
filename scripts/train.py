@@ -4,9 +4,12 @@ Trains a model on data from a specific subject and day.
 import os
 import sys
 import numpy as np
+import torch
 from preprocessing import to_fft_electrode_difference, group_frequencies
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from models import CNNeeg
+from preprocessing import plot_channels, emd_filtering
 
 _SUBJECT_ = '01'
 _DAY_ = '1'
@@ -26,20 +29,34 @@ if __name__ == "__main__":
     epochs = np.delete(epochs, [46, 53, 60], 0)
     labels = np.delete(labels, [46, 53, 60])
 
+    # Keep only a few epochs for faster debugging
+    # epochs = epochs[:30]
+    # labels = labels[:30]
+
     # ========================= PREPROCESSING ================================#
+    # EMD filtering
+    epochs = emd_filtering(epochs)
+
     # Converting to the FFT of cross-channels-difference matrix
     img_epochs = to_fft_electrode_difference(epochs)
+    # img_epochs = group_frequencies(img_epochs, freq_groups=100)
     print(f"Obtained {img_epochs.shape[0]} images of shape {(img_epochs.shape[1], img_epochs.shape[2])}")
     # Rescales the images between 0 and 1
     img_epochs = (img_epochs - img_epochs.min()) / max(img_epochs.max() - img_epochs.min(), 0)
+
+    # Reshapes the images to shape (batch_size, 1, H, W) as pytorch expects a channel axis
+    img_epochs = img_epochs[:, np.newaxis]
 
     # ======================== Train-test split ==============================#
     x_train, x_test, y_train, y_test = train_test_split(img_epochs, labels, train_size=0.8, random_state=42)
 
     # ======================== Training ======================================#
-    rfc = RandomForestClassifier(n_estimators=100, max_depth=3, random_state=42)
-    rfc.fit(x_train.reshape((x_train.shape[0], -1)), y_train)
+    rfc = LogisticRegression(random_state=42, C=0.001)
+    x_train = x_train.reshape(x_train.shape[0], -1)
+    x_test = x_test.reshape(x_test.shape[0], -1)
+    rfc.fit(x_train, y_train)
 
-    print(f'Classifier train score: {rfc.score(x_train.reshape((x_train.shape[0], -1)), y_train)}')
-    print(f'Classifier test score: {rfc.score(x_test.reshape((x_test.shape[0], -1)), y_test)}')
+    print(f"Training accuracy: {rfc.score(x_train, y_train)}")
+    print(f"Validation accuracy: {rfc.score(x_test, y_test)}")
+
 
