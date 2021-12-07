@@ -4,6 +4,9 @@ Defines filtering and decomposition functions.
 import emd
 import matplotlib.pyplot as plt
 import numpy as np
+import mne
+from mne.preprocessing import (ICA, create_eog_epochs, create_ecg_epochs,
+                               corrmap)
 
 
 def plot_emd_imfs(signal, nb_imfs=10):
@@ -41,3 +44,39 @@ def emd_filtering(epochs, which_imfs=[1, 2]):
         # (N_channels, N_timesteps)
         result_epochs.append(np.stack(channels))
     return np.stack(result_epochs)
+
+""" ICA to be finished """
+
+def ica_artifact_rejection(raw):
+    ica.exclude = []
+    
+    # find which ICs match the EOG pattern
+    eog_indices, eog_scores = ica.find_bads_eog(raw)
+    ica.exclude = eog_indices
+
+    # barplot of ICA component "EOG match" scores
+    ica.plot_scores(eog_scores)
+
+    # plot diagnostics
+    ica.plot_properties(raw, picks=eog_indices)
+
+    # plot ICs applied to raw data, with EOG matches highlighted
+    ica.plot_sources(raw, show_scrollbars=False)
+    
+    # refit the ICA with 30 components this time
+    new_ica = ICA(n_components=30, max_iter='auto', random_state=97)
+    new_ica.fit(filt_raw)
+
+    # find which ICs match the ECG pattern
+    ecg_indices, ecg_scores = new_ica.find_bads_ecg(raw, method='correlation',
+                                                threshold='auto')
+    new_ica.exclude = ecg_indices
+
+    # barplot of ICA component "ECG match" scores
+    new_ica.plot_scores(ecg_scores)
+
+    # plot diagnostics
+    new_ica.plot_properties(raw, picks=ecg_indices)
+
+    # plot ICs applied to raw data, with ECG matches highlighted
+    new_ica.plot_sources(raw, show_scrollbars=False)
