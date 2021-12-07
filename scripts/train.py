@@ -5,10 +5,11 @@ import os
 import sys
 import numpy as np
 import torch
+from torch.utils.data import TensorDataset, DataLoader
 from preprocessing import to_fft_electrode_difference, group_frequencies
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from models import CNNeeg
+from models import LargeCNN
 from preprocessing import plot_channels, emd_filtering
 
 _SUBJECT_ = '01'
@@ -30,8 +31,8 @@ if __name__ == "__main__":
     labels = np.delete(labels, [46, 53, 60])
 
     # Keep only a few epochs for faster debugging
-    # epochs = epochs[:30]
-    # labels = labels[:30]
+    epochs = epochs[:30]
+    labels = labels[:30]
 
     # ========================= PREPROCESSING ================================#
     # EMD filtering
@@ -50,13 +51,15 @@ if __name__ == "__main__":
     # ======================== Train-test split ==============================#
     x_train, x_test, y_train, y_test = train_test_split(img_epochs, labels, train_size=0.8, random_state=42)
 
-    # ======================== Training ======================================#
-    rfc = LogisticRegression(random_state=42, C=0.001)
-    x_train = x_train.reshape(x_train.shape[0], -1)
-    x_test = x_test.reshape(x_test.shape[0], -1)
-    rfc.fit(x_train, y_train)
+    # ======================== Data Loader ===================================#
+    # Loads the data as pytorch tensors to allow for the network training
+    train_dataset = TensorDataset(torch.Tensor(x_train), torch.Tensor(y_train))
+    train_loader = DataLoader(train_dataset, batch_size=1)
 
-    print(f"Training accuracy: {rfc.score(x_train, y_train)}")
-    print(f"Validation accuracy: {rfc.score(x_test, y_test)}")
+    # ======================== Training ======================================#
+    model = LargeCNN()
+    for x, y in train_loader:
+        opt = model(x)
+        print(f"Output size: {opt.shape}")
 
 
