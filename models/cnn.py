@@ -50,20 +50,35 @@ class LargeCNN(nn.Module):
     """
     def __init__(self):
         super().__init__()
+        # Encoder
         self.block1 = ConvBlock(1, 16, 7)
-        self.block2 = ConvBlock(16, 16, 5)
-        self.block3 = ConvBlock(16, 32, 5)
-        self.block4 = ConvBlock(32, 32, 5)
-        self.block5 = ConvBlock(32, 32, 5)
-        self.block6 = ConvBlock(32, 64, 5)
-        self.block7 = ConvBlock(64, 96, 5)
+        self.block2 = ConvBlock(16, 32, 5)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.block3 = ConvBlock(32, 32, 3)
+        self.block4 = ConvBlock(32, 64, 3)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.block5 = ConvBlock(64, 96, 3)
+        self.block6 = ConvBlock(96, 96, 3)
+        self.bn3 = nn.BatchNorm2d(96)
+        self.block7 = ConvBlock(96, 96, 3)
+
+        # Classification head
+        self.fc1 = nn.Linear(6 * 11 * 96, 64)
+        self.fc2 = nn.Linear(64, 1)
 
     def forward(self, x):
         x = torch.relu(self.block1(x))
         x = torch.relu(self.block2(x))
+        x = self.bn1(x)
         x = torch.relu(self.block3(x))
         x = torch.relu(self.block4(x))
+        x = self.bn2(x)
         x = torch.relu(self.block5(x))
         x = torch.relu(self.block6(x))
-        x = self.block7(x)
+        x = self.bn3(x)
+        x = torch.relu(self.block7(x))
+
+        x = torch.flatten(x, start_dim=1)
+        x = torch.relu(self.fc1(x))
+        x = torch.sigmoid(self.fc2(x))
         return x

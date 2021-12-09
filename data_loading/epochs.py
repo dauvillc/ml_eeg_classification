@@ -16,8 +16,8 @@ def split_to_epochs(raw, events):
         for each epoch;
     - L is an array of shape (N_epochs) giving the label (1 for 'gi', 0 for 'fo')
     """
-    # Retrieves the timesteps at which a 14 event happens
-    epoch_starts = events[np.where(events[:, 2] == 14), 0][0]
+    # Retrieves the timesteps at which a 9 or 11 event happens
+    epoch_starts = events[np.where((events[:, 2] == 9) | (events[:, 2] == 11)), 0][0]
     # Same for event 13
     epoch_ends = events[np.where(events[:, 2] == 13), 0][0]
     if epoch_ends.shape != epoch_starts.shape:
@@ -37,12 +37,12 @@ def split_to_epochs(raw, events):
 
     # Returns all events 12 or 10 that happened, in chronoligical order
     # shape = (N_epochs,), values in {12, 10}
-    label_events = events[np.where(np.isin(events[:, 2], [12, 10])), 2][0]
+    label_events = events[np.where(np.isin(events[:, 2], [11, 9])), 2][0]
     if label_events.shape[0] != epochs.shape[0]:
         raise ValueError(f'Found {epochs.shape[0]} epochs but only' +
                          f'{label_events.shape[0]} events 12 or 10')
     # shape = (N_epochs,) values in {1, 0}
-    epochs_true_labels = (label_events == 12).astype(int)
+    epochs_true_labels = (label_events == 11).astype(int)
 
     return epochs, epochs_true_labels
 
