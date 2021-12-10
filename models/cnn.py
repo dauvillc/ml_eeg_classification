@@ -3,7 +3,6 @@ Implements the CNN models for the EEG fo / gi data classification
 """
 import torch
 import torch.nn as nn
-import torchvision.models as models
 
 
 class CNNeeg(nn.Module):
@@ -80,5 +79,32 @@ class LargeCNN(nn.Module):
 
         x = torch.flatten(x, start_dim=1)
         x = torch.relu(self.fc1(x))
+        x = torch.sigmoid(self.fc2(x))
+        return x
+
+
+class STFCnn(nn.Module):
+    """
+    A CNN model made to be used with spectrograms.
+    """
+    def __init__(self, in_channels):
+        super().__init__()
+        self.block1 = ConvBlock(in_channels, 64, 5)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.block2 = ConvBlock(64, 64, 3)
+
+        # Classification head
+        self.fc1 = nn.Linear(64 * 5 * 8, 128)
+        self.fc11 = nn.Linear(128, 64)
+        self.fc2 = nn.Linear(64, 1)
+
+    def forward(self, x):
+        x = torch.relu(self.block1(x))
+        x = self.bn1(x)
+        x = torch.relu(self.block2(x))
+
+        x = torch.flatten(x, start_dim=1)
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc11(x))
         x = torch.sigmoid(self.fc2(x))
         return x

@@ -1,1 +1,1 @@
-from .cnn import CNNeeg, LargeCNN
+from .cnn import CNNeeg, LargeCNN, STFCnn

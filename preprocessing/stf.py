@@ -4,6 +4,8 @@ Defines method to work with space-time-frequency domain.
 import numpy as np
 import cv2
 import os
+import matplotlib.pyplot as plt
+from scipy.signal import spectrogram, get_window
 from scipy.fft import rfft
 
 _DEFAULT_IMG_DIR_ = "ready_data/fft_images"
@@ -54,6 +56,32 @@ def to_fft_electrode_difference(epochs, save_images=False, output_dir=_DEFAULT_I
             cv2.imwrite(path, img)
 
     return fft_imgs
+
+
+def to_spectrograms(epochs, sampling_freq, save_images=False, output_dir=_DEFAULT_IMG_DIR_,
+                    window_size=128):
+    """
+    Given a set of epochs, return their space-time frequency representation.
+    :param epochs: signals, ndarray of shape (N_epochs, N_channels, N_timesteps)
+    :param sampling_freq: integer, sampling frequency of the signals.
+    :param save_images: boolean, whether to save the spectrograms as images for
+        visualisation purpose.
+    :param output_dir: if save_images is True, directory to which save the images.
+    :param window_size: int, number of samples in the spectrogram window.
+    :return: an ndarray of shape (N_epochs, N_channels, N_timesteps, N_frequencies)
+    """
+    window = get_window('tukey', window_size)
+    print(f'Computing the spectrogram for {epochs.shape[0]} * {epochs.shape[1]} signals')
+    freqs, times, epoch_spectres = spectrogram(epochs, sampling_freq, window)
+    if save_images:
+        for epoch_indx, epoch in enumerate(epoch_spectres):
+            for k_ch, channel in enumerate(epoch):
+                path = os.path.join(output_dir, f'spectre_{epoch_indx}_{k_ch}.png')
+                plt.imshow(channel)
+                plt.savefig(path)
+                plt.close()
+    return epoch_spectres
+
 
 
 def group_frequencies(fft_images, freq_groups):

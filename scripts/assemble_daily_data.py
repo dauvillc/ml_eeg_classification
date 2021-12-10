@@ -15,7 +15,7 @@ from data_loading.events import load_eve_file
 from preprocessing import select_channels
 
 _SUBJECT_ = '01'
-_DAY_ = '5'
+_DAY_ = '2'
 _OUTPUT_DIR_ = 'ready_data'
 _DATA_DIR_ = os.path.join('data', 'Data_ML_Internship')
 _SAMPLING_FREQ_ = 512

@@ -8,13 +8,15 @@ import torch
 from datetime import datetime as dt
 from torch.utils.data import TensorDataset, DataLoader
 from preprocessing import to_fft_electrode_difference, group_frequencies
-from models import LargeCNN
+from models import LargeCNN, STFCnn
 from preprocessing import plot_channels, emd_filtering
+from preprocessing.stf import to_spectrograms
 from sklearn.model_selection import KFold
 from sklearn.linear_model import LogisticRegression
 
 _SUBJECT_ = '01'
-_DAY_ = '5'
+# Possibles values: '1' to '5', or 'all'
+_DAY_ = 'all'
 _DATA_DIR_ = 'ready_data'
 _CROSS_VALIDATION_SPLITS_ = 4
 _RESULTS_SAVE_DIR_ = 'results'
@@ -43,14 +45,15 @@ if __name__ == "__main__":
     # epochs = emd_filtering(epochs)
 
     # Converting to the FFT of cross-channels-difference matrix
-    img_epochs = to_fft_electrode_difference(epochs, save_images=False, output_dir="ready_data/new_fft_images")
+    # img_epochs = to_fft_electrode_difference(epochs, save_images=False, output_dir="ready_data/new_fft_images")
+    img_epochs = to_spectrograms(epochs, 512, save_images=False, window_size=64)
     # img_epochs = group_frequencies(img_epochs, freq_groups=100)
     print(f"Obtained {img_epochs.shape[0]} images of shape {(img_epochs.shape[1], img_epochs.shape[2])}")
     # Rescales the images between 0 and 1
     img_epochs = (img_epochs - img_epochs.min()) / max(img_epochs.max() - img_epochs.min(), 0)
 
     # Reshapes the images to shape (batch_size, 1, H, W) as pytorch expects a channel axis
-    img_epochs = img_epochs[:, np.newaxis]
+    # img_epochs = img_epochs[:, np.newaxis]
 
     # ======================== Computation device ============================#
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -69,12 +72,12 @@ if __name__ == "__main__":
         train_loader = DataLoader(train_dataset, batch_size=2)
 
         # ======================== Training ======================================#
-        model = LargeCNN().to(device)
+        model = STFCnn(img_epochs.shape[1]).to(device)
         optim = torch.optim.Adam(model.parameters(), lr=0.0001)
         # Binary crossentropy loss for binary classification
         loss_fn = torch.nn.BCELoss()
 
-        for epoch in range(50):
+        for epoch in range(40):
             losses = []
             for it, (x, y) in enumerate(train_loader):
                 x, y = x.to(device), y.to(device)
