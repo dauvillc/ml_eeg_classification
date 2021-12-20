@@ -94,7 +94,7 @@ class STFCnn(nn.Module):
         self.block2 = ConvBlock(64, 64, 3)
 
         # Classification head
-        self.fc1 = nn.Linear(64 * 5 * 8, 128)
+        self.fc1 = nn.Linear(64 * 5 * 14, 128)
         self.fc11 = nn.Linear(128, 64)
         self.fc2 = nn.Linear(64, 1)
 

@@ -10,28 +10,26 @@ from torch.utils.data import TensorDataset, DataLoader
 from preprocessing import to_fft_electrode_difference, group_frequencies
 from models import LargeCNN, STFCnn
 from preprocessing import plot_channels, emd_filtering
+from data_loading import load_data
 from preprocessing.stf import to_spectrograms
 from sklearn.model_selection import KFold
 from sklearn.linear_model import LogisticRegression
 
+
+# PARAMETERS
 _SUBJECT_ = '01'
 # Possibles values: '1' to '5', or 'all'
 _DAY_ = 'all'
 _DATA_DIR_ = 'ready_data'
-_CROSS_VALIDATION_SPLITS_ = 4
 _RESULTS_SAVE_DIR_ = 'results'
+_USE_CLEAN_DATA_ = True
+_CROSS_VALIDATION_SPLITS_ = 4
 
 if __name__ == "__main__":
     # ======================== DATA LOADING =================================#
-    epochs_path = os.path.join(_DATA_DIR_, "data_Sub" + _SUBJECT_ + "_day" + _DAY_ + ".np")
-    labels_path = os.path.join(_DATA_DIR_, "labels_Sub" + _SUBJECT_ + "_day" + _DAY_ + ".np")
-    epochs, labels = None, None
-    with open(epochs_path, "rb") as epochs_file:
-        epochs = np.load(epochs_file)
-        print(f"Loaded the epochs of shape {epochs.shape}")
-    with open(labels_path, "rb") as labels_file:
-        labels = np.load(labels_file)
-        print(f"Loaded the labels of shape {labels.shape}")
+    # Load the epochs and labels into ndarrays. Either loads the raw fif files
+    # or the data cleaned by experts.
+    epochs, labels = load_data(_DATA_DIR_, _SUBJECT_, _DAY_, _USE_CLEAN_DATA_)
     # Remove bad epochs
     # epochs = np.delete(epochs, [46, 53, 60], 0)
     # labels = np.delete(labels, [46, 53, 60])
@@ -65,6 +63,13 @@ if __name__ == "__main__":
         print(f"Cross-validating on subset {fold_indx}...")
         x_train, y_train = img_epochs[train_index], labels[train_index]
         x_test, y_test = img_epochs[test_index], labels[test_index]
+
+        x_train = x_train.reshape(x_train.shape[0], -1)
+        x_test = x_test.reshape(x_test.shape[0], -1)
+        lr = LogisticRegression(C=100.0, random_state=42)
+        lr.fit(x_train, y_train)
+        print(f'LR train score: {lr.score(x_train, y_train)}, test score: {lr.score(x_test, y_test)}')
+        continue
 
         # ======================== Data Loader ===================================#
         # Loads the data as pytorch tensors to allow for the network training
