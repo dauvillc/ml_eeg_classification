@@ -1,0 +1,6 @@
+Gives the best results achieved with logistic regression
+for each frequency band
+
+High gamma: 0.7214, std=0.1222
+Low gamma:  0.7214, std=0.1222
+Delta:      0.6196, std=0.1260

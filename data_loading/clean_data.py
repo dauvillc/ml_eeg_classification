@@ -15,6 +15,10 @@ def assemble_clean_data(day, out_dir=_DEFAULT_OUT_DIR_, path=_DEFAULT_CLEAN_DATA
     :param day: int or str, which day's data to load
     :param out_dir: directory to which the arrays are saved.
     :param path: path to the .mat files
+    :return E, L, CN where:
+    - E is an array of shape (N_epochs, N_channels, N_timesteps) containing the epochs
+    - L is an array of shape (N_epochs,) containing the labels as zeros and ones
+    - CN is an array of shape (N_channels,) of string giving the names of the channels
     """
     matfile = f'clean_data_sub_01_Day-{str(day)}.mat'
     with h5py.File(os.path.join(path, matfile), 'r') as f:
@@ -48,12 +52,23 @@ def assemble_clean_data(day, out_dir=_DEFAULT_OUT_DIR_, path=_DEFAULT_CLEAN_DATA
 
         print(f"Loaded mat file {matfile} into an array of shape {epochs.shape}")
 
+        # Finally, we need to save the association between the channels indexes and
+        # their names, so that the ML pipeline is able to select specific channels.
+        # The following retrieves the labels (three letters) as np arrays of shape (3,)
+        # of integers. Those ints are the ASCII code of the corresponding letters.
+        # This process is required due to an incompatibility with MATLAB
+        labels_as_ints = [np.array(f[ref][:, 0]) for ref in f['clean_data']['label'][0]]
+        # Converts the ASCII code to actual strings
+        ch_names = np.array([''.join([chr(i) for i in asciis]) for asciis in labels_as_ints])
+
     with open(os.path.join(out_dir, f"clean_data_sub01_day{day}.np"), "wb") as savefile:
         np.save(savefile, epochs)
     with open(os.path.join(out_dir, f"clean_labels_sub01_day{day}.np"), "wb") as sfile:
         np.save(sfile, labels)
+    with open(os.path.join(out_dir, f"channels_names.np"), "wb") as channelsfile:
+        np.save(channelsfile, ch_names)
 
-    return epochs, labels
+    return epochs, labels, ch_names
 
 
 # If executed, loads the .mat file directly
@@ -63,7 +78,7 @@ if __name__ == "__main__":
     for day in range(1, 6):
         # Loads the clean data from a single day and
         # writes it into np files
-        epochs, labels = assemble_clean_data(day, out_dir=out_dir)
+        epochs, labels, ch_names = assemble_clean_data(day, out_dir=out_dir)
         all_days_epochs.append(epochs)
         all_days_labels.append(labels)
     # Assembles all days together

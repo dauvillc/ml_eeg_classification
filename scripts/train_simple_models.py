@@ -7,54 +7,59 @@ import numpy as np
 import torch
 from preprocessing import to_fft_electrode_difference, group_frequencies
 from preprocessing import plot_channels, emd_filtering
+from preprocessing import select_frequency_bands
+from preprocessing import select_electrodes_group
 from preprocessing.stf import to_spectrograms
+from preprocessing.scaling import rescale
 from sklearn.model_selection import KFold
 from sklearn.linear_model import LogisticRegression
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.svm import SVC
+from scipy.fft import rfft
 from collections import defaultdict
 from data_loading import load_data
-
 
 # PARAMETERS
 _SUBJECT_ = '01'
 # Possibles values: '1' to '5', or 'all'
-_DAY_ = '1'
+_DAY_ = '4'
 _DATA_DIR_ = 'ready_data'
 _RESULTS_SAVE_DIR_ = 'results'
 _USE_CLEAN_DATA_ = True
 _CROSS_VALIDATION_SPLITS_ = 10
 
-_MODELS_ = ['logistic_regression', 'random_forest']
-
+_MODELS_ = ['logistic_regression']
 
 if __name__ == "__main__":
     # ======================== DATA LOADING =================================#
     # Load the epochs and labels into ndarrays. Either loads the raw fif files
     # or the data cleaned by experts.
     epochs, labels = load_data(_DATA_DIR_, _SUBJECT_, _DAY_, _USE_CLEAN_DATA_)
-
-    # Remove bad epochs
-    # epochs = np.delete(epochs, [46, 53, 60], 0)
-    # labels = np.delete(labels, [46, 53, 60])
-
-    # Keep only a few epochs for faster debugging
-    # epochs = epochs[:30]
-    # labels = labels[:30]
+    plot_channels(epochs[0], to_file="figures/complete_channels_epoch0.png")
 
     # ========================= PREPROCESSING ================================#
+    # Frequency filtering
+    epochs = select_frequency_bands(epochs, 512, 'delta')
+    plot_channels(epochs[0], to_file="figures/bandpass_1_4_epoch0.png")
+
     # EMD filtering
     # epochs = emd_filtering(epochs)
 
     # Converting to the FFT of cross-channels-difference matrix
     # img_epochs = to_fft_electrode_difference(epochs, save_images=False, output_dir="ready_data/new_fft_images")
-    img_epochs = to_spectrograms(epochs, 512, save_images=False, window_size=8)
+    img_epochs = np.abs(rfft(epochs))
+    # img_epochs = to_spectrograms(epochs, 512, save_images=False, window_size=8)
     # img_epochs = group_frequencies(img_epochs, freq_groups=100)
 
-    print(f"Obtained {img_epochs.shape[0]} images of shape {(img_epochs.shape[1], img_epochs.shape[2])}")
+    print(f"Obtained the features of shape {img_epochs.shape}")
+    # Rescales the images
+    img_epochs = rescale(img_epochs, 'normalization')
 
     # ======================== Cross Validation ==============================#
     folds = KFold(n_splits=_CROSS_VALIDATION_SPLITS_)
     accs = defaultdict(list)
+    train_accs = defaultdict(list)
     for fold_indx, (train_index, test_index) in enumerate(folds.split(img_epochs, labels)):
         print(f"Cross-validating on subset {fold_indx}...")
         x_train, y_train = img_epochs[train_index], labels[train_index]
@@ -66,20 +71,36 @@ if __name__ == "__main__":
 
         # Logistic regression
         if 'logistic_regression' in _MODELS_:
-            lr = LogisticRegression(C=0.1, random_state=42)
+            lr = LogisticRegression(penalty='l2', C=0.0005, random_state=42, solver='lbfgs', max_iter=200)
             lr.fit(x_train, y_train)
             accs["lr"].append(lr.score(x_test, y_test))
+            train_accs['lr'].append(lr.score(x_train, y_train))
 
         # Random forests
         if 'random_forest' in _MODELS_:
-            rfc = RandomForestClassifier(n_estimators=100, max_depth=3)
+            rfc = RandomForestClassifier(n_estimators=300, max_depth=3, random_state=42)
             rfc.fit(x_train, y_train)
             accs["rfc"].append(rfc.score(x_test, y_test))
+            train_accs['rfc'].append(rfc.score(x_train, y_train))
 
         if 'gradient_boosting' in _MODELS_:
-            gbc = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1)
+            gbc = GradientBoostingClassifier(n_estimators=50, learning_rate=5, random_state=42)
             gbc.fit(x_train, y_train)
-            accs["rfc"].append(gbc.score(x_test, y_test))
+            accs["gbc"].append(gbc.score(x_test, y_test))
+            train_accs['gbc'].append(gbc.score(x_train, y_train))
 
-    for model, accuracies in accs.items():
-        print(f"{model}: mean acc={np.mean(accuracies)}, std={np.std(accuracies)}")
+        if 'lda' in _MODELS_:
+            lda = LinearDiscriminantAnalysis()
+            lda.fit(x_train, y_train)
+            accs["lda"].append(lda.score(x_test, y_test))
+            train_accs['ldc'].append(lda.score(x_train, y_train))
+
+        if 'svm' in _MODELS_:
+            svc = SVC(C=1.0)
+            svc.fit(x_train, y_train)
+            accs["svm"].append(svc.score(x_test, y_test))
+            train_accs['svm'].append(svc.score(x_train, y_train))
+    for (model, accuracies), tr_accs in zip(accs.items(), train_accs.values()):
+        print(
+            f"{model}: Training acc = {np.mean(tr_accs):1.4f}, std={np.std(tr_accs):1.4f} - "
+            + f"Test mean acc={np.mean(accuracies):1.4f}, std={np.std(accuracies):1.4f}")

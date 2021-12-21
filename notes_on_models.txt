@@ -1,0 +1,36 @@
+Report here the best conditions for all models
+Be as precise as possible to make the results fully reproducible
+Try to ALWAYS USE random_state = 42 whenever possible
+
+types of inputs:
+abs(rfft(epochs)): Module of the real FFT of the channels
+    nb_features = nb_channels x nb_timesteps // 2
+
+
+types of scalings:
+    minmax: x = (x - x.min) / (x.max - x.min)
+    normalization = (x - x.mean) / x.std
+
+
+Linear Regression:
+Input = abs(rfft(epochs))
+Scaling = minmax
+Best frequency band = High gamma
+L2 penalty with C = 10.0 to 25.0, solver lbfgs
+mean acc = 0.7214, std=0.1222
+--Same results for--
+Scaling = normalization
+L2 penalty with C = 0.005, solver lbfgs, 200 max iterations
+mean acc = 0.7214, std=0.1222
+--Same results for--
+Frequency band = Low gamma
+Scaling = norm
+L2 penalty with C = 0.01, solver lbfgs, 200 max it
+mean acc = 0.7214, std=0.1222
+
+Random Forest:
+Input = abs(rfft(epochs))
+Best freq band = all
+n_estimators = 300, max_depth = 3
+DAY 4:
+mean test acc = 0.8500, std=0.1090

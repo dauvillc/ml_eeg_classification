@@ -14,7 +14,7 @@ def plot_channels(epoch, channels=None, to_file=None):
     :param to_file: image file to which the figure should be saved. If None,
         the figure is simply displayed.
     """
-    plt.figure(tight_layout=True)
+    plt.figure(figsize=(14, 14))
     if channels is None:
         channels = np.arange(epoch.shape[0])
 
