@@ -8,23 +8,28 @@ import numpy as np
 from mne.preprocessing import (ICA, create_eog_epochs, create_ecg_epochs,
                                corrmap)
 
+_FREQ_BANDS_ = {'delta': [1, 4], 'theta': [4, 8], 'alpha': [8, 12], 'beta': [12, 25], 'lgamma': [25, 40],
+                'hgamma': [40, 70]}
 
-_FREQ_BANDS_ = {'delta': [1, 4], 'theta': [4, 8], 'alpha':[8, 12], 'beta':[12, 25], 'lgamma': [25, 40],
-                'hgamma':[25, 40]}
 
-
-def select_frequency_bands(epochs, sampling_freq, freq_band):
+def select_frequency_bands(epochs, sampling_freq, freq_bands):
     """
     Filters the epochs to keep only a specifc band of frequencies
     from the usual bands of EEG data handling.
     :param epochs: array of shape (N_epochs, N_channels, N_timesteps)
     :param sampling_freq: int, sampling rate of the signal
-    :param freq_band: One of 'delta', 'theta', 'alpha', 'beta', 'lgamma'
-        or 'hgamma'
+    :param freq_bands: str or list of str. Which frequency bands to keep,
+        among 'delta', 'theta', 'alpha', 'beta', 'lgamma', hgamma'.
     :return: the epochs filtered
     """
-    print(f'Selecting band frequency {freq_band}')
-    low, high = _FREQ_BANDS_[freq_band]
+    if isinstance(freq_bands, str):
+        freq_bands = [freq_bands]
+    # Low and high frequency of each selected band
+    lows = [_FREQ_BANDS_[band][0] for band in freq_bands]
+    highs = [_FREQ_BANDS_[band][1] for band in freq_bands]
+    # Min and max frequencies overall
+    low, high = min(lows), max(highs)
+    print(f'Selecting frequency band {[low, high]}')
     return apply_bandpass(epochs, sampling_freq, low, high)
 
 
@@ -45,6 +50,22 @@ def apply_bandpass(epochs, sampling_freq, low, high):
 
     b, a = scipy.signal.butter(3, [low, high], 'band')
     return scipy.signal.lfilter(b, a, epochs, axis=-1)
+
+
+def select_time_window(epochs, start, end, sampling_rate=512):
+    """
+    Selects a specific time window of the signals and discards
+    the rest.
+    :param epochs: array of shape (N_epochs, N_channels, N_timesteps)
+    :param start: Beginning of the window in seconds
+    :param end: End of the window in seconds
+    :param sampling_rate: Sampling frequency in Hz
+    :return: the shortened epochs
+    """
+    print(f'Selecting time window t=[{start}s, {end}s]')
+    first_indx = int(start * sampling_rate)
+    end_indx = int(end * sampling_rate)
+    return epochs[:, :, first_indx:end_indx + 1]
 
 
 def plot_emd_imfs(signal, nb_imfs=10):
@@ -83,7 +104,6 @@ def emd_filtering(epochs, which_imfs=[1, 2]):
         # (N_channels, N_timesteps)
         result_epochs.append(np.stack(channels))
     return np.stack(result_epochs)
-
 
 
 """ ICA to be finished """

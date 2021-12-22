@@ -4,12 +4,11 @@ forests on the same data as the CNN.
 """
 import os
 import numpy as np
-import torch
 from preprocessing import to_fft_electrode_difference, group_frequencies
-from preprocessing import plot_channels, emd_filtering
+from preprocessing import plot_channels
 from preprocessing import select_frequency_bands
-from preprocessing import select_electrodes_group
-from preprocessing.stf import to_spectrograms
+from preprocessing import select_electrodes_groups
+from preprocessing.filtering import select_time_window
 from preprocessing.scaling import rescale
 from sklearn.model_selection import KFold
 from sklearn.linear_model import LogisticRegression
@@ -18,7 +17,7 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
 from scipy.fft import rfft
 from collections import defaultdict
-from data_loading import load_data
+from data_loading import load_data, load_channels_names
 
 # PARAMETERS
 _SUBJECT_ = '01'
@@ -29,19 +28,22 @@ _RESULTS_SAVE_DIR_ = 'results'
 _USE_CLEAN_DATA_ = True
 _CROSS_VALIDATION_SPLITS_ = 10
 
-_MODELS_ = ['logistic_regression']
+_MODELS_ = ['random_forest']
 
 if __name__ == "__main__":
     # ======================== DATA LOADING =================================#
     # Load the epochs and labels into ndarrays. Either loads the raw fif files
     # or the data cleaned by experts.
     epochs, labels = load_data(_DATA_DIR_, _SUBJECT_, _DAY_, _USE_CLEAN_DATA_)
+    # Loads the name of each electrode and selects a specific group
+    electrodes = load_channels_names(_DATA_DIR_)
+    epochs = select_time_window(epochs, 0, 4)
+    epochs = select_electrodes_groups(epochs, electrodes, ['right temporal'])
+    # epochs = select_frequency_bands(epochs, 512, 'hgamma')
     plot_channels(epochs[0], to_file="figures/complete_channels_epoch0.png")
 
     # ========================= PREPROCESSING ================================#
     # Frequency filtering
-    epochs = select_frequency_bands(epochs, 512, 'delta')
-    plot_channels(epochs[0], to_file="figures/bandpass_1_4_epoch0.png")
 
     # EMD filtering
     # epochs = emd_filtering(epochs)
@@ -71,14 +73,14 @@ if __name__ == "__main__":
 
         # Logistic regression
         if 'logistic_regression' in _MODELS_:
-            lr = LogisticRegression(penalty='l2', C=0.0005, random_state=42, solver='lbfgs', max_iter=200)
+            lr = LogisticRegression(penalty='l2', C=1, random_state=42, solver='lbfgs', max_iter=200)
             lr.fit(x_train, y_train)
             accs["lr"].append(lr.score(x_test, y_test))
             train_accs['lr'].append(lr.score(x_train, y_train))
 
         # Random forests
         if 'random_forest' in _MODELS_:
-            rfc = RandomForestClassifier(n_estimators=300, max_depth=3, random_state=42)
+            rfc = RandomForestClassifier(n_estimators=300, max_depth=10, random_state=42)
             rfc.fit(x_train, y_train)
             accs["rfc"].append(rfc.score(x_test, y_test))
             train_accs['rfc'].append(rfc.score(x_train, y_train))

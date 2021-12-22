@@ -13,7 +13,17 @@ _CHANNELS_GROUPS_ = {
                 'FCZ', 'FC2', 'FC4', 'FC6', 'FC8'],
     'central': ['FC5', 'FC3', 'FC1', 'FCZ', 'FC2', 'FC4', 'FC6', 'C5'
                 'C3', 'C1', 'CZ', 'C2', 'C4', 'C6',
-                'CP5', 'CP3', 'CP1', 'CPZ', 'CP2', 'CP4', 'CP6']
+                'CP5', 'CP3', 'CP1', 'CPZ', 'CP2', 'CP4', 'CP6'],
+    'parietal':['TP7', 'TP8',
+                'CP5', 'CP3', 'CP1', 'CPZ', 'CP2', 'CP4', 'CP6',
+                'P7', 'P5', 'P3', 'P1', 'PZ', 'P2', 'P4', 'P6', 'P8',
+                'PO7', 'PO5', 'PO3', 'POZ', 'PO4', 'PO6', 'PO8'],
+    'occipital':['PO7', 'PO5', 'PO3', 'POZ', 'PO4', 'PO6', 'PO8',
+                 'O1', 'OZ', 'O2'],
+    'right temporal': ['FT7', 'T7', 'TP7', 'FT8', 'T8', 'TP8',
+                       'FC6', 'C6', 'CP6', 'FC4', 'C4', 'CP4'],
+    'left temporal': ['FT7', 'T7', 'TP7', 'FT8', 'T8', 'TP8',
+                      'FC5', 'C5', 'CP5', 'FC3', 'C3', 'CP3']
 }
 
 
@@ -29,23 +39,32 @@ def select_channels(raw, exclude=_UNINTERESTING_CHANNELS_):
     raw.pick(list(good_channels))
 
 
-def select_electrodes_group(epochs, cha_names, group_name, verbose=True):
+def select_electrodes_groups(epochs, cha_names, groups, verbose=True):
     """
     Selects a group of electrodes from a specific region of the brain.
     :param epochs: array of shape (N_epochs, N_channels, N_timesteps)
     :param cha_names: list or array of shape (N_channels) giving
         the name of each channel.
-    :param group_name: One of 'frontal', 'central', 'parietal',
-        'occipital', 'right temporal' or 'left temporal";
-        Group of electrode to select.
+    :param groups: str or list of str, electrodes groups (areas of the brain) to
+        keep. The possible areas are 'frontal', 'central', 'parietal',
+        'occipital', 'right temporal' and 'left temporal".
     :param verbose: well that's the verbose parameter
     :return: an array of shape (N_epochs, N_channels_selected, N_timesteps)
         containing the channels of the epochs which were selected.
     """
+    if isinstance(groups, str):
+        groups = [groups]
     if verbose:
-        print(f'Selecting electrodes group {group_name}')
-    group_channels_names = _CHANNELS_GROUPS_[group_name]
+        print(f'Selecting electrodes groups {" - ".join(groups)}')
+    # Since an electrode can be included in several groups,
+    # we use a set to avoid including it multiple times in the returned
+    # epochs
+    kept_channels = set()
+    for group in groups:
+        electrodes = _CHANNELS_GROUPS_[group]
+        for electrode in electrodes:
+            kept_channels.add(electrode)
 
     selected_channels = [i for i in range(epochs.shape[1])
-                         if cha_names[i] in group_channels_names]
+                         if cha_names[i] in kept_channels]
     return epochs[:, selected_channels]

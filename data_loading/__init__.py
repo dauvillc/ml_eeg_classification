@@ -27,3 +27,14 @@ def load_data(data_dir, subject, day, use_clean_data):
         labels = np.load(labels_file)
         print(f"Loaded the labels of shape {labels.shape}")
     return epochs, labels
+
+
+def load_channels_names(data_dir):
+    """
+    Loads the names of each of the 62 channels.
+    :param data_dir: directory in which the data is assembled.
+    :return: an array of strings giving the name of each electrode.
+    """
+    with open(os.path.join(data_dir, "channels_names.np") , "rb") as channels_file:
+        ch_names = np.load(channels_file)
+    return ch_names

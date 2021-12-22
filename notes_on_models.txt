@@ -34,3 +34,22 @@ Best freq band = all
 n_estimators = 300, max_depth = 3
 DAY 4:
 mean test acc = 0.8500, std=0.1090
+--> Leave-one-out cross-valid: 0.8608, std=0.3462
+-- OR --:
+Input = abs(rfft(epochs))
+freq band = all
+n_estimators = 300, max depth = 3
+ELECTRODES = right temporal
+scaling = normalization or minmax or none
+DAY 4:
+mean test acc = 0.8875, std=0.1526
+-- OR --:
+Input = abs(rfft(epochs))
+freq band = all
+n_estimators = 300, max depth = 1
+ELECTRODES = right temporal
+scaling = normalization or minmax
+TIME WINDOW = 0s to 4s
+DAY 4:
+mean test acc = 0.9000, std=0.1837
+---> Leave-one-out cross-valid: 0.8861, std=0.3177
