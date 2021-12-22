@@ -20,9 +20,9 @@ _CHANNELS_GROUPS_ = {
                 'PO7', 'PO5', 'PO3', 'POZ', 'PO4', 'PO6', 'PO8'],
     'occipital':['PO7', 'PO5', 'PO3', 'POZ', 'PO4', 'PO6', 'PO8',
                  'O1', 'OZ', 'O2'],
-    'right temporal': ['FT7', 'T7', 'TP7', 'FT8', 'T8', 'TP8',
+    'right temporal': ['FT8', 'T8', 'TP8',
                        'FC6', 'C6', 'CP6', 'FC4', 'C4', 'CP4'],
-    'left temporal': ['FT7', 'T7', 'TP7', 'FT8', 'T8', 'TP8',
+    'left temporal': ['FT7', 'T7', 'TP7',
                       'FC5', 'C5', 'CP5', 'FC3', 'C3', 'CP3']
 }
 

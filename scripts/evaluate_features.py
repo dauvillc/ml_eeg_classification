@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # Write here all combinations of features to be tested
     freq_bands = ['all', 'hgamma', 'lgamma', 'alpha', 'beta', 'theta',
                   'delta', ['hgamma', 'lgamma']]
-    electrode_groups = ['right temporal', 'left temporal', 'parietal', 'occipital',
+    electrode_groups = ['all', 'right temporal', 'left temporal', 'parietal', 'occipital',
                         'frontal', 'central', ['right temporal', 'left temporal']]
 
     # ==================== MODELS PARAMETERS ====================== #
@@ -109,10 +109,6 @@ if __name__ == "__main__":
             # let's pretend it's because we need the standard deviation
             (train_acc, train_std), (acc, std) = cross_validate(model, x, labels, _CROSS_VALIDATION_FOLDS_)
 
-            # Puts the frequency bands in the format 'band1_band2_..'
-            if isinstance(band, str):
-                band = [band]
-            band = '_'.join(band)
             results['frequencies'].append(band)
             results['electrodes'].append(elec_group)
             results['train_acc'].append(train_acc)

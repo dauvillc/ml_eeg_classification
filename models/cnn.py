@@ -53,12 +53,15 @@ class LargeCNN(nn.Module):
         self.block1 = ConvBlock(1, 16, 7)
         self.block2 = ConvBlock(16, 32, 5)
         self.bn1 = nn.BatchNorm2d(32)
+        self.dropout1 = nn.Dropout2d(0.3)
         self.block3 = ConvBlock(32, 32, 3)
         self.block4 = ConvBlock(32, 64, 3)
         self.bn2 = nn.BatchNorm2d(64)
+        self.dropout2 = nn.Dropout2d(0.3)
         self.block5 = ConvBlock(64, 96, 3)
         self.block6 = ConvBlock(96, 96, 3)
         self.bn3 = nn.BatchNorm2d(96)
+        self.dropout3 = nn.Dropout2d(0.3)
         self.block7 = ConvBlock(96, 96, 3)
 
         # Classification head
@@ -69,12 +72,15 @@ class LargeCNN(nn.Module):
         x = torch.relu(self.block1(x))
         x = torch.relu(self.block2(x))
         x = self.bn1(x)
+        x = self.dropout1(x)
         x = torch.relu(self.block3(x))
         x = torch.relu(self.block4(x))
         x = self.bn2(x)
+        x = self.dropout2(x)
         x = torch.relu(self.block5(x))
         x = torch.relu(self.block6(x))
         x = self.bn3(x)
+        x = self.dropout3(x)
         x = torch.relu(self.block7(x))
 
         x = torch.flatten(x, start_dim=1)
@@ -91,16 +97,18 @@ class STFCnn(nn.Module):
         super().__init__()
         self.block1 = ConvBlock(in_channels, 64, 5)
         self.bn1 = nn.BatchNorm2d(64)
+        self.dropout1 = nn.Dropout2d(0.3)
         self.block2 = ConvBlock(64, 64, 3)
 
         # Classification head
-        self.fc1 = nn.Linear(64 * 5 * 14, 128)
+        self.fc1 = nn.Linear(64 * 5 * 8, 128)
         self.fc11 = nn.Linear(128, 64)
         self.fc2 = nn.Linear(64, 1)
 
     def forward(self, x):
         x = torch.relu(self.block1(x))
         x = self.bn1(x)
+        x = self.dropout1(x)
         x = torch.relu(self.block2(x))
 
         x = torch.flatten(x, start_dim=1)

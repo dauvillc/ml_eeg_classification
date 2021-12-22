@@ -1,15 +1,21 @@
 """
 Trains a model on data from a specific subject and day.
+usage:
+python scripts/train_cnn.py [--spectrogram]
 """
+import sys
+
+sys.path.append('.')
+
 import os
 import numpy as np
 import pandas as pd
 import torch
+import matplotlib.pyplot as plt
 from datetime import datetime as dt
 from torch.utils.data import TensorDataset, DataLoader
-from preprocessing import to_fft_electrode_difference, group_frequencies
+from preprocessing import to_fft_electrode_difference
 from models import LargeCNN, STFCnn
-from preprocessing import plot_channels, emd_filtering
 from data_loading import load_data
 from preprocessing.stf import to_spectrograms
 from sklearn.model_selection import KFold
@@ -31,27 +37,29 @@ if __name__ == "__main__":
     epochs, labels = load_data(_DATA_DIR_, _SUBJECT_, _DAY_, _USE_CLEAN_DATA_)
 
     # ========================= PREPROCESSING ================================#
-    # EMD filtering
-    # epochs = emd_filtering(epochs)
+    use_spectrogram = '--spectrogram' in sys.argv
 
     # Converting to the FFT of cross-channels-difference matrix
-    img_epochs = to_fft_electrode_difference(epochs, save_images=False, output_dir="ready_data/new_fft_images")
-    # img_epochs = to_spectrograms(epochs, 512, save_images=False, window_size=64)
-    # img_epochs = group_frequencies(img_epochs, freq_groups=100)
-    print(f"Obtained {img_epochs.shape[0]} images of shape {(img_epochs.shape[1], img_epochs.shape[2])}")
-    # Rescales the images between 0 and 1
-    img_epochs = (img_epochs - img_epochs.min()) / max(img_epochs.max() - img_epochs.min(), 0)
+    # or to a spectrogram as requested by the user
+    if use_spectrogram:
+        img_epochs = to_spectrograms(epochs, 512, save_images=False, window_size=64)
+    else:
+        img_epochs = to_fft_electrode_difference(epochs, save_images=False, output_dir="ready_data/new_fft_images")
+        # Reshapes the images to shape (batch_size, 1, H, W) as pytorch expects a channel axis
+        img_epochs = img_epochs[:, np.newaxis]
+    print(f"Obtained {img_epochs.shape[0]} images of shape {(img_epochs.shape[2], img_epochs.shape[3])}")
 
-    # Reshapes the images to shape (batch_size, 1, H, W) as pytorch expects a channel axis
-    img_epochs = img_epochs[:, np.newaxis]
+    # Rescales the images between 0 and 1
+    img_epochs = (img_epochs - img_epochs.mean()) / img_epochs.std()
 
     # ======================== Computation device ============================#
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # ======================== Cross Validation ==============================#
     # We use sklearn's KFold to perform automatized cross-validation
-    folds = KFold(n_splits=_CROSS_VALIDATION_SPLITS_)
+    folds = KFold(n_splits=_CROSS_VALIDATION_SPLITS_, shuffle=False)
     test_losses, test_accs = [], []
+    train_losses, train_accs = [], []
     for fold_indx, (train_index, test_index) in enumerate(folds.split(img_epochs, labels)):
         print(f"Cross-validating on subset {fold_indx}...")
         x_train, y_train = img_epochs[train_index], labels[train_index]
@@ -64,11 +72,14 @@ if __name__ == "__main__":
 
         # ======================== Training ======================================#
         # Loads the CNN model
-        model = LargeCNN().to(device)
+        if use_spectrogram:
+            model = STFCnn(x_train.shape[1]).to(device)
+        else:
+            model = LargeCNN().to(device)
         optim = torch.optim.Adam(model.parameters(), lr=2e-5)
+
         # Binary crossentropy loss for binary classification
         loss_fn = torch.nn.BCELoss()
-
         # Training loop
         for epoch in range(20):
             losses = []
@@ -81,7 +92,11 @@ if __name__ == "__main__":
                 optim.step()
                 losses.append(loss.item())
 
-            print(f'Epoch {epoch} - Avg Loss = {np.mean(losses)}')
+            train_loss = np.mean(losses)
+            print(f'Epoch {epoch} - Avg Loss = {train_loss}')
+
+        # Saves the training loss of the last epoch
+        train_losses.append(train_loss)
 
         # ======================= Test ===========================================#
         with torch.no_grad():
@@ -104,6 +119,12 @@ if __name__ == "__main__":
             test_losses.append(loss)
             test_accs.append(acc)
 
+    mean_test_loss, std_test_loss = np.mean(test_losses), np.std(test_losses)
+    mean_train_loss, std_train_loss = np.mean(train_losses), np.std(train_losses)
+    mean_test_acc, std_test_acc = np.mean(test_accs), np.std(test_accs)
+    print(f"Mean train loss={mean_train_loss}, std={std_train_loss}")
+    print(f"Mean test loss={mean_test_loss}, std={std_test_loss}")
+    print(f"Mean test acc={mean_test_acc}, std={std_test_acc}")
     # ========================= SAVING THE RESULTS ===========================#
     results = pd.DataFrame({"subset": np.arange(_CROSS_VALIDATION_SPLITS_),
                             "loss": test_losses,

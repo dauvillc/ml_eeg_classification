@@ -1,7 +1,7 @@
 import numpy as np
 import os
 
-def load_data(data_dir, subject, day, use_clean_data):
+def load_data(data_dir, subject, day, use_clean_data, verbose=False):
     """
     Loads the pre-assembled data, either raw or clean.
     The data must be assembled using the corresponding script beforehand
@@ -15,18 +15,22 @@ def load_data(data_dir, subject, day, use_clean_data):
         (N_epochs, N_channels, N_timesteps) and (N_epochs,).
     """
     day, subject = str(day), str(subject)
+    # Computes the paths
     if use_clean_data:
         epochs_path = os.path.join(data_dir, f"clean_data_sub{subject}_day{day}.np")
         labels_path = os.path.join(data_dir, f"clean_labels_sub{subject}_day{day}.np")
     else:
         epochs_path = os.path.join(data_dir, "data_Sub" + subject + "_day" + day + ".np")
         labels_path = os.path.join(data_dir, "labels_Sub" + subject + "_day" + day + ".np")
+    # Loads the epochs followed by the labels
     with open(epochs_path, "rb") as epochs_file:
         epochs = np.load(epochs_file)
-        print(f"Loaded the epochs of shape {epochs.shape}")
+        if verbose:
+            print(f"Loaded the epochs of shape {epochs.shape}")
     with open(labels_path, "rb") as labels_file:
         labels = np.load(labels_file)
-        print(f"Loaded the labels of shape {labels.shape}")
+        if verbose:
+            print(f"Loaded the labels of shape {labels.shape}")
     return epochs, labels
 
 
