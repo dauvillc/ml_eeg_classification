@@ -46,14 +46,17 @@ def select_electrodes_groups(epochs, cha_names, groups, verbose=True):
     :param cha_names: list or array of shape (N_channels) giving
         the name of each channel.
     :param groups: str or list of str, electrodes groups (areas of the brain) to
-        keep. The possible areas are 'frontal', 'central', 'parietal',
+        keep. The possible areas are 'all', 'frontal', 'central', 'parietal',
         'occipital', 'right temporal' and 'left temporal".
     :param verbose: well that's the verbose parameter
     :return: an array of shape (N_epochs, N_channels_selected, N_timesteps)
         containing the channels of the epochs which were selected.
     """
+    # Converts to a list if a single str was passed
     if isinstance(groups, str):
         groups = [groups]
+    if 'all' in groups:
+        return epochs
     if verbose:
         print(f'Selecting electrodes groups {" - ".join(groups)}')
     # Since an electrode can be included in several groups,

@@ -43,6 +43,7 @@ ELECTRODES = right temporal
 scaling = normalization or minmax or none
 DAY 4:
 mean test acc = 0.8875, std=0.1526
+--> Leave-one-out cross-valid: 0.8734, std=0.3325
 -- OR --:
 Input = abs(rfft(epochs))
 freq band = all

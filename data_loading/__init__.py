@@ -14,6 +14,7 @@ def load_data(data_dir, subject, day, use_clean_data):
     :return: (Epochs, labels) which are two ndarrays of shapes
         (N_epochs, N_channels, N_timesteps) and (N_epochs,).
     """
+    day, subject = str(day), str(subject)
     if use_clean_data:
         epochs_path = os.path.join(data_dir, f"clean_data_sub{subject}_day{day}.np")
         labels_path = os.path.join(data_dir, f"clean_labels_sub{subject}_day{day}.np")

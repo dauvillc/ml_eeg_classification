@@ -15,7 +15,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
-from scipy.fft import rfft
+from scipy.fft import rfft, rfftfreq
 from collections import defaultdict
 from data_loading import load_data, load_channels_names
 
@@ -37,10 +37,9 @@ if __name__ == "__main__":
     epochs, labels = load_data(_DATA_DIR_, _SUBJECT_, _DAY_, _USE_CLEAN_DATA_)
     # Loads the name of each electrode and selects a specific group
     electrodes = load_channels_names(_DATA_DIR_)
-    epochs = select_time_window(epochs, 0, 4)
     epochs = select_electrodes_groups(epochs, electrodes, ['right temporal'])
-    # epochs = select_frequency_bands(epochs, 512, 'hgamma')
-    plot_channels(epochs[0], to_file="figures/complete_channels_epoch0.png")
+    epochs = select_time_window(epochs, 0, 5, 512)
+    epochs = select_frequency_bands(epochs, 512, 'all')
 
     # ========================= PREPROCESSING ================================#
     # Frequency filtering
@@ -51,6 +50,9 @@ if __name__ == "__main__":
     # Converting to the FFT of cross-channels-difference matrix
     # img_epochs = to_fft_electrode_difference(epochs, save_images=False, output_dir="ready_data/new_fft_images")
     img_epochs = np.abs(rfft(epochs))
+    freqs = rfftfreq(epochs.shape[-1], 1 / 512)
+    img_epochs = img_epochs[:, :, freqs <= 100]
+    plot_channels(img_epochs[0], x=freqs[freqs <= 100], to_file="figures/img_epochs.png")
     # img_epochs = to_spectrograms(epochs, 512, save_images=False, window_size=8)
     # img_epochs = group_frequencies(img_epochs, freq_groups=100)
 
@@ -80,7 +82,7 @@ if __name__ == "__main__":
 
         # Random forests
         if 'random_forest' in _MODELS_:
-            rfc = RandomForestClassifier(n_estimators=300, max_depth=10, random_state=42)
+            rfc = RandomForestClassifier(n_estimators=300, max_depth=2, random_state=42)
             rfc.fit(x_train, y_train)
             accs["rfc"].append(rfc.score(x_test, y_test))
             train_accs['rfc'].append(rfc.score(x_train, y_train))
