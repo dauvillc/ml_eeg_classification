@@ -6,12 +6,13 @@ import cv2
 import os
 import matplotlib.pyplot as plt
 from scipy.signal import spectrogram, get_window
-from scipy.fft import rfft
+from scipy.fft import rfft, rfftfreq
 
 _DEFAULT_IMG_DIR_ = "ready_data/fft_images"
 
 
-def to_fft_electrode_difference(epochs, save_images=False, output_dir=_DEFAULT_IMG_DIR_):
+def to_fft_electrode_difference(epochs, save_images=False, output_dir=_DEFAULT_IMG_DIR_, sampling_rate=512,
+                                keep_freqs=None):
     """
     Transforms the EEG signals into a matrix of dimensions nb_freq x C(C-1)/2
     where C is the number of channels.
@@ -23,6 +24,9 @@ def to_fft_electrode_difference(epochs, save_images=False, output_dir=_DEFAULT_I
     :param save_images: Boolean, optional, whether to save the matrix as images for the sake
         of visualization.
     :param output_dir: if save_images is True, directory to save the images into.
+    :param sampling_rate: Sampling rate in Hz. Only required if keep_freqs is given.
+    :param keep_freqs: optional tuple of frequencies (a, b). The FFTs of the signals will be cropped
+        between a and b.
     :return: an array of shape (N_epochs, nb_freq, C(C-1)/2) giving the 2D version of each epoch.
     """
     nb_epochs, nb_ch, nb_timesteps = epochs.shape
@@ -42,6 +46,11 @@ def to_fft_electrode_difference(epochs, save_images=False, output_dir=_DEFAULT_I
     # return the positive part of the spectrum, using rfft()
     print("Processing FFT...")
     fft_imgs = np.abs(rfft(ch_diffs))
+    if keep_freqs is not None:
+        fft_freqs = rfftfreq(ch_diffs.shape[-1], 1 / sampling_rate)
+        a, b = keep_freqs
+        fft_imgs = fft_imgs[:, :, (fft_freqs >= a) & (fft_freqs <= b)]
+
     # Take the transpose to have the rows be the frequencies and columns
     # the electrodes difference, as in the paper
     fft_imgs = np.swapaxes(fft_imgs, 1, 2)
@@ -73,6 +82,7 @@ def to_spectrograms(epochs, sampling_freq, save_images=False, output_dir=_DEFAUL
     window = get_window('tukey', window_size)
     print(f'Computing the spectrogram for {epochs.shape[0]} * {epochs.shape[1]} signals')
     freqs, times, epoch_spectres = spectrogram(epochs, sampling_freq, window)
+
     if save_images:
         for epoch_indx, epoch in enumerate(epoch_spectres):
             for k_ch, channel in enumerate(epoch):

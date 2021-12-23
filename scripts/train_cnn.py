@@ -15,39 +15,51 @@ import matplotlib.pyplot as plt
 from datetime import datetime as dt
 from torch.utils.data import TensorDataset, DataLoader
 from preprocessing import to_fft_electrode_difference
-from models import LargeCNN, STFCnn
-from data_loading import load_data
+from models.cnn import LargeCNN, STFCnn, HighGammaTemporalCNN
+from data_loading import load_data, load_channels_names
 from preprocessing.stf import to_spectrograms
 from sklearn.model_selection import KFold
+from preprocessing.filtering import select_frequency_bands
+from preprocessing.channels import select_electrodes_groups
 
 
 # PARAMETERS
 _SUBJECT_ = '01'
 # Possibles values: '1' to '5', or 'all'
-_DAY_ = '4'
+_DAY_ = '5'
 _DATA_DIR_ = 'ready_data'
 _RESULTS_SAVE_DIR_ = 'results'
 _USE_CLEAN_DATA_ = True
-_CROSS_VALIDATION_SPLITS_ = 4
 
 if __name__ == "__main__":
     # ======================== DATA LOADING =================================#
     # Load the epochs and labels into ndarrays. Either loads the raw fif files
     # or the data cleaned by experts.
     epochs, labels = load_data(_DATA_DIR_, _SUBJECT_, _DAY_, _USE_CLEAN_DATA_)
+    channels_names = load_channels_names(_DATA_DIR_)
 
     # ========================= PREPROCESSING ================================#
     use_spectrogram = '--spectrogram' in sys.argv
+    use_baseline = '--baseline' in sys.argv
 
     # Converting to the FFT of cross-channels-difference matrix
     # or to a spectrogram as requested by the user
-    if use_spectrogram:
-        img_epochs = to_spectrograms(epochs, 512, save_images=False, window_size=64)
-    else:
-        img_epochs = to_fft_electrode_difference(epochs, save_images=False, output_dir="ready_data/new_fft_images")
+    if not use_baseline:
+        epochs = select_electrodes_groups(epochs, channels_names, ['right temporal', 'left temporal'])
+        # Uses the High Gamma frequency band by applying a bandpass filter,
+        # and then keeping only the frequencies between 25 and 70 Hz in the spectrum
+        epochs = select_frequency_bands(epochs, 512, 'hgamma')
+        img_epochs = to_fft_electrode_difference(epochs, keep_freqs=[25, 70])
         # Reshapes the images to shape (batch_size, 1, H, W) as pytorch expects a channel axis
         img_epochs = img_epochs[:, np.newaxis]
-    print(f"Obtained {img_epochs.shape[0]} images of shape {(img_epochs.shape[2], img_epochs.shape[3])}")
+    else:
+        if use_spectrogram:
+            img_epochs = to_spectrograms(epochs, 512, save_images=False, window_size=64)
+        else:
+            img_epochs = to_fft_electrode_difference(epochs, save_images=False, output_dir="ready_data/new_fft_images")
+            # Reshapes the images to shape (batch_size, 1, H, W) as pytorch expects a channel axis
+            img_epochs = img_epochs[:, np.newaxis]
+    print(f"Obtained images of shape {img_epochs.shape}")
 
     # Rescales the images between 0 and 1
     img_epochs = (img_epochs - img_epochs.mean()) / img_epochs.std()
@@ -57,7 +69,9 @@ if __name__ == "__main__":
 
     # ======================== Cross Validation ==============================#
     # We use sklearn's KFold to perform automatized cross-validation
-    folds = KFold(n_splits=_CROSS_VALIDATION_SPLITS_, shuffle=False)
+    n_folds = 4
+    folds = KFold(n_splits=n_folds, shuffle=False)
+
     test_losses, test_accs = [], []
     train_losses, train_accs = [], []
     for fold_indx, (train_index, test_index) in enumerate(folds.split(img_epochs, labels)):
@@ -72,7 +86,9 @@ if __name__ == "__main__":
 
         # ======================== Training ======================================#
         # Loads the CNN model
-        if use_spectrogram:
+        if not use_baseline:
+            model = HighGammaTemporalCNN().to(device)
+        elif use_spectrogram:
             model = STFCnn(x_train.shape[1]).to(device)
         else:
             model = LargeCNN().to(device)
@@ -80,8 +96,10 @@ if __name__ == "__main__":
 
         # Binary crossentropy loss for binary classification
         loss_fn = torch.nn.BCELoss()
+
+        n_epochs = 20
         # Training loop
-        for epoch in range(20):
+        for epoch in range(n_epochs):
             losses = []
             for it, (x, y) in enumerate(train_loader):
                 x, y = x.to(device), y.to(device)
@@ -126,7 +144,7 @@ if __name__ == "__main__":
     print(f"Mean test loss={mean_test_loss}, std={std_test_loss}")
     print(f"Mean test acc={mean_test_acc}, std={std_test_acc}")
     # ========================= SAVING THE RESULTS ===========================#
-    results = pd.DataFrame({"subset": np.arange(_CROSS_VALIDATION_SPLITS_),
+    results = pd.DataFrame({"subset": np.arange(n_folds),
                             "loss": test_losses,
                             "accuracy": test_accs})
     results.to_csv(os.path.join(_RESULTS_SAVE_DIR_,

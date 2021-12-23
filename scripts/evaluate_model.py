@@ -13,9 +13,10 @@ from scipy.fft import rfft, rfftfreq
 from models.evaluation import cross_validate
 from preprocessing import select_frequency_bands
 from preprocessing import select_electrodes_groups
-from preprocessing.filtering import select_time_window
 from preprocessing.scaling import rescale
 from data_loading import load_data, load_channels_names
+from preprocessing import to_fft_electrode_difference
+from preprocessing.stf import to_spectrograms
 
 # PARAMETERS
 _SUBJECT_ = '01'
@@ -23,7 +24,8 @@ _DATA_DIR_ = 'ready_data'
 
 
 def evaluate(model_type, day=4, areas='all', freq_bands='all', max_depth=3, C=1,
-             cross_valid_folds=5, use_clean_data=True):
+             cross_valid_folds=5, use_clean_data=True,
+             use_spectrogram=False, use_fft_differences=False):
     """
     Evaluates a specific model over specific features.
     :param model_type: 'random_forest' or 'logistic_regression'.
@@ -35,6 +37,11 @@ def evaluate(model_type, day=4, areas='all', freq_bands='all', max_depth=3, C=1,
         the higher the penalty (same as in sklearn's LogisticRegression).
     :param cross_valid_folds: int, number of cross-validation folds.
     :param use_clean_data: whether to use the cleaned data furnished by the lab.
+    :param use_spectrogram: Boolean. If True, the spectrogram of each electrode is
+        used as features. Serves as a baseline model.
+    :param use_fft_differences: Boolean. If True, the FFT of the difference between each pair
+        of electrodes is used as features. No more preprocessing is applied, as this serves
+        as a baseline model.
     :return: (train_acc, train_std), (test_acc, test_std)
     """
     # ======================= DATA LOADING ======================== #
@@ -47,12 +54,17 @@ def evaluate(model_type, day=4, areas='all', freq_bands='all', max_depth=3, C=1,
     # ==================== TEST =================================== #
 
     # Builds the features
-    x = select_electrodes_groups(epochs, electrodes, areas)
-    x = select_frequency_bands(x, 512, freq_bands)
-    x = np.abs(rfft(x))
-    # Cuts the spectrum at 100 Hz, since it null from that point on
-    freqs = rfftfreq(epochs.shape[-1], 1 / 512)
-    x = x[:, :, freqs <= 100]
+    if use_spectrogram:
+        x = to_spectrograms(epochs, 512, window_size=64)
+    elif use_fft_differences:
+        x = to_fft_electrode_difference(epochs)
+    else:
+        x = select_electrodes_groups(epochs, electrodes, areas)
+        x = select_frequency_bands(x, 512, freq_bands)
+        x = np.abs(rfft(x))
+        # Cuts the spectrum at 100 Hz, since it null from that point on
+        freqs = rfftfreq(epochs.shape[-1], 1 / 512)
+        x = x[:, :, freqs <= 100]
 
     # If the model is a logistic regression, we perform
     # min-max scaling

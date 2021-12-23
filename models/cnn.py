@@ -34,8 +34,8 @@ class ConvBlock(nn.Module):
     """
     def __init__(self, in_channels, out_channels, kernel_size=3):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size, stride=2)
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size, padding=1)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size, stride=2, padding=1)
 
     def forward(self, x):
         x = torch.relu(self.conv1(x))
@@ -53,40 +53,86 @@ class LargeCNN(nn.Module):
         self.block1 = ConvBlock(1, 16, 7)
         self.block2 = ConvBlock(16, 32, 5)
         self.bn1 = nn.BatchNorm2d(32)
-        self.dropout1 = nn.Dropout2d(0.3)
+        # self.dropout1 = nn.Dropout2d(0.3)
         self.block3 = ConvBlock(32, 32, 3)
         self.block4 = ConvBlock(32, 64, 3)
         self.bn2 = nn.BatchNorm2d(64)
-        self.dropout2 = nn.Dropout2d(0.3)
+        # self.dropout2 = nn.Dropout2d(0.3)
         self.block5 = ConvBlock(64, 96, 3)
         self.block6 = ConvBlock(96, 96, 3)
         self.bn3 = nn.BatchNorm2d(96)
-        self.dropout3 = nn.Dropout2d(0.3)
+        # self.dropout3 = nn.Dropout2d(0.3)
         self.block7 = ConvBlock(96, 96, 3)
 
         # Classification head
-        self.fc1 = nn.Linear(6 * 11 * 96, 64)
+        self.fc1 = nn.Linear(15 * 10* 96, 64)
         self.fc2 = nn.Linear(64, 1)
 
     def forward(self, x):
         x = torch.relu(self.block1(x))
         x = torch.relu(self.block2(x))
         x = self.bn1(x)
-        x = self.dropout1(x)
+        # x = self.dropout1(x)
         x = torch.relu(self.block3(x))
         x = torch.relu(self.block4(x))
         x = self.bn2(x)
-        x = self.dropout2(x)
+        # x = self.dropout2(x)
         x = torch.relu(self.block5(x))
         x = torch.relu(self.block6(x))
         x = self.bn3(x)
-        x = self.dropout3(x)
+        # x = self.dropout3(x)
         x = torch.relu(self.block7(x))
 
         x = torch.flatten(x, start_dim=1)
         x = torch.relu(self.fc1(x))
         x = torch.sigmoid(self.fc2(x))
         return x
+
+
+class HighGammaTemporalCNN(nn.Module):
+    """
+    Defines a CNN model adapted to classify images
+    obtained through:
+    - selecting the right and left temporal brain areas
+    - selecting the High gamma frequency band only
+    - using the FFT difference to create the images
+    """
+    def __init__(self):
+        super().__init__()
+        self.block1 = ConvBlock(1, 16, 7)
+        # self.dropout1 = nn.Dropout2d(0.3)
+        self.block2 = ConvBlock(16, 32, 5)
+        self.bn1 = nn.BatchNorm2d(32)
+        # self.dropout2 = nn.Dropout2d(0.3)
+        self.block3 = ConvBlock(32, 32, 3)
+        # self.dropout3 = nn.Dropout2d(0.3)
+        self.block4 = ConvBlock(32, 64, 3)
+        # self.dropout4 = nn.Dropout2d(0.3)
+        self.bn2 = nn.BatchNorm2d(64)
+
+        # Classification head
+        self.fc1 = nn.Linear(64 * 14 * 9, 64)
+        self.fc11 = nn.Linear(64, 64)
+        self.fc2 = nn.Linear(64, 1)
+
+    def forward(self, x):
+        x = torch.relu(self.block1(x))
+        # x = self.dropout1(x)
+        x = torch.relu(self.block2(x))
+        x = self.bn1(x)
+        # x = self.dropout2(x)
+        x = torch.relu(self.block3(x))
+        # x = self.dropout3(x)
+        x = torch.relu(self.block4(x))
+        x = self.bn2(x)
+        # x = self.dropout4(x)
+
+        x = torch.flatten(x, start_dim=1)
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc11(x))
+        x = torch.sigmoid(self.fc2(x))
+        return x
+
 
 
 class STFCnn(nn.Module):
