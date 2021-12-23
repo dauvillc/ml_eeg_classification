@@ -28,7 +28,7 @@ the following packages are required to reproduce our results:
   This script evaluates of combinations of a set of frequencies and a set of electrode groups, and writes
   the results in evaluations/ . This does not require pytorch.
  * **Evaluating a model on a single combination**: from the project's root directory, run:
-  ```python scripts/evaluate_model model [--freqs FREQ1 FREQ2 ...] [--brain_areas AREA1 AREA2 ...] [--day DAY] [--penalty C] [--max_depth D]
+  ```python scripts/evaluate_model model [--freqs FREQ1 FREQ2 ...] [--brain_areas AREA1 AREA2 ...] [--day DAY] [--penalty C] [--max_depth D]```
   This functionality can be preferably accessed via the evaluate_model.evaluate() function, as used in the explore_features notebook.
   * Training the CNN: from the project's root directory run:
   ```python scripts/train_cnn [--baseline]```
