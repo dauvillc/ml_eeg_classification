@@ -26,7 +26,7 @@ from preprocessing.channels import select_electrodes_groups
 # PARAMETERS
 _SUBJECT_ = '01'
 # Possibles values: '1' to '5', or 'all'
-_DAY_ = '5'
+_DAY_ = '2'
 _DATA_DIR_ = 'ready_data'
 _RESULTS_SAVE_DIR_ = 'results'
 _USE_CLEAN_DATA_ = True
@@ -41,6 +41,7 @@ if __name__ == "__main__":
     # ========================= PREPROCESSING ================================#
     use_spectrogram = '--spectrogram' in sys.argv
     use_baseline = '--baseline' in sys.argv
+    use_dropout = '--use_dropout' in sys.argv
 
     # Converting to the FFT of cross-channels-difference matrix
     # or to a spectrogram as requested by the user
@@ -87,7 +88,7 @@ if __name__ == "__main__":
         # ======================== Training ======================================#
         # Loads the CNN model
         if not use_baseline:
-            model = HighGammaTemporalCNN().to(device)
+            model = HighGammaTemporalCNN(use_dropout=use_dropout).to(device)
         elif use_spectrogram:
             model = STFCnn(x_train.shape[1]).to(device)
         else:
@@ -98,6 +99,8 @@ if __name__ == "__main__":
         loss_fn = torch.nn.BCELoss()
 
         n_epochs = 20
+        if use_dropout:
+            n_epochs = 100
         # Training loop
         for epoch in range(n_epochs):
             losses = []

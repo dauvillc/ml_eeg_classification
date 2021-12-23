@@ -97,18 +97,20 @@ class HighGammaTemporalCNN(nn.Module):
     - selecting the High gamma frequency band only
     - using the FFT difference to create the images
     """
-    def __init__(self):
+    def __init__(self, use_dropout=True):
         super().__init__()
         self.block1 = ConvBlock(1, 16, 7)
-        # self.dropout1 = nn.Dropout2d(0.3)
         self.block2 = ConvBlock(16, 32, 5)
         self.bn1 = nn.BatchNorm2d(32)
-        # self.dropout2 = nn.Dropout2d(0.3)
         self.block3 = ConvBlock(32, 32, 3)
-        # self.dropout3 = nn.Dropout2d(0.3)
         self.block4 = ConvBlock(32, 64, 3)
-        # self.dropout4 = nn.Dropout2d(0.3)
         self.bn2 = nn.BatchNorm2d(64)
+        self.use_dropout = use_dropout
+        if use_dropout:
+            self.dropout1 = nn.Dropout2d(0.3)
+            self.dropout2 = nn.Dropout2d(0.3)
+            self.dropout3 = nn.Dropout2d(0.3)
+            self.dropout4 = nn.Dropout2d(0.3)
 
         # Classification head
         self.fc1 = nn.Linear(64 * 14 * 9, 64)
@@ -117,15 +119,19 @@ class HighGammaTemporalCNN(nn.Module):
 
     def forward(self, x):
         x = torch.relu(self.block1(x))
-        # x = self.dropout1(x)
+        if self.use_dropout:
+            x = self.dropout1(x)
         x = torch.relu(self.block2(x))
         x = self.bn1(x)
-        # x = self.dropout2(x)
+        if self.use_dropout:
+            x = self.dropout2(x)
         x = torch.relu(self.block3(x))
-        # x = self.dropout3(x)
+        if self.use_dropout:
+            x = self.dropout3(x)
         x = torch.relu(self.block4(x))
         x = self.bn2(x)
-        # x = self.dropout4(x)
+        if self.use_dropout:
+            x = self.dropout4(x)
 
         x = torch.flatten(x, start_dim=1)
         x = torch.relu(self.fc1(x))
