@@ -1,4 +1,6 @@
 # Covert speech decoding from EEG signals
+## EPFL ML for Science project
+Final report: https://github.com/dauvillc/ml_eeg_classification/blob/master/ml_report_final.pdf
 ## Repo organization
 * data: contains the raw data provided by the lab. This normally includes the folders 'clean_data_sub_01', 
   and 'Data_ML_Internship'. However the data is confidential. For this reason, we were only in measure of providing
